@@ -6,7 +6,7 @@ const app = express();
 app.use(cors());
 app.use(express.json());
 app.get("/", (req, res) => {
-  res.sendFile(__dirname + "/index.html");
+  res.sendFile(__dirname + "/eda_agent.html");
 });
 
 
@@ -43,4 +43,5 @@ app.post("/api/agent", async (req, res) => {
 const PORT = 3000;
 app.listen(PORT, () => {
   console.log(`✅ EDA Agent server running at http://localhost:${PORT}`);
+
 });
