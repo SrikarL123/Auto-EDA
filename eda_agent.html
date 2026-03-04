@@ -1,0 +1,538 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Auto EDA — Agentic Pipeline</title>
+  <link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=Syne:wght@400;700;800&display=swap" rel="stylesheet"/>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg: #090909;
+      --surface: #111111;
+      --border: #222222;
+      --accent: #00ff88;
+      --warn: #ffaa00;
+      --text: #e8e8e8;
+      --muted: #555;
+      --mono: 'Space Mono', monospace;
+      --sans: 'Syne', sans-serif;
+    }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: var(--sans);
+      min-height: 100vh;
+      overflow-x: hidden;
+    }
+
+    body::before {
+      content: '';
+      position: fixed;
+      inset: 0;
+      background: repeating-linear-gradient(
+        0deg, transparent, transparent 2px,
+        rgba(0,255,136,0.015) 2px, rgba(0,255,136,0.015) 4px
+      );
+      pointer-events: none;
+      z-index: 9999;
+    }
+
+    .container { max-width: 720px; margin: 0 auto; padding: 48px 24px 80px; }
+
+    .header { margin-bottom: 48px; animation: fadeUp 0.6s ease both; }
+
+    .badge {
+      display: inline-block;
+      font-family: var(--mono);
+      font-size: 10px;
+      letter-spacing: 3px;
+      text-transform: uppercase;
+      color: var(--accent);
+      border: 1px solid rgba(0,255,136,0.3);
+      padding: 4px 12px;
+      border-radius: 2px;
+      margin-bottom: 16px;
+    }
+
+    h1 {
+      font-family: var(--sans);
+      font-size: clamp(2.4rem, 6vw, 3.6rem);
+      font-weight: 800;
+      line-height: 1;
+      letter-spacing: -2px;
+      color: #fff;
+    }
+
+    h1 span { color: var(--accent); }
+
+    .subtitle {
+      font-family: var(--mono);
+      font-size: 12px;
+      color: var(--muted);
+      margin-top: 12px;
+      letter-spacing: 1px;
+    }
+
+    .upload-zone {
+      border: 2px dashed var(--border);
+      border-radius: 12px;
+      padding: 40px 24px;
+      text-align: center;
+      cursor: pointer;
+      transition: all 0.3s ease;
+      margin-bottom: 24px;
+      background: var(--surface);
+      position: relative;
+      overflow: hidden;
+      animation: fadeUp 0.6s 0.1s ease both;
+    }
+
+    .upload-zone::after {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background: radial-gradient(ellipse at center, rgba(0,255,136,0.04) 0%, transparent 70%);
+      opacity: 0;
+      transition: opacity 0.3s;
+    }
+
+    .upload-zone:hover, .upload-zone.dragover {
+      border-color: var(--accent);
+      box-shadow: 0 0 30px rgba(0,255,136,0.1);
+    }
+
+    .upload-zone:hover::after, .upload-zone.dragover::after { opacity: 1; }
+    .upload-zone.has-file { border-color: rgba(0,255,136,0.5); border-style: solid; }
+
+    .upload-icon { font-size: 36px; margin-bottom: 12px; display: block; }
+
+    .upload-title {
+      font-family: var(--sans);
+      font-weight: 700;
+      font-size: 15px;
+      color: #fff;
+      margin-bottom: 4px;
+    }
+
+    .upload-sub { font-family: var(--mono); font-size: 11px; color: var(--muted); }
+
+    .run-btn {
+      width: 100%;
+      padding: 16px;
+      background: var(--accent);
+      color: #000;
+      border: none;
+      border-radius: 8px;
+      font-family: var(--mono);
+      font-size: 13px;
+      font-weight: 700;
+      letter-spacing: 3px;
+      text-transform: uppercase;
+      cursor: pointer;
+      transition: all 0.3s ease;
+      margin-bottom: 40px;
+      position: relative;
+      overflow: hidden;
+      animation: fadeUp 0.6s 0.2s ease both;
+    }
+
+    .run-btn::before {
+      content: '';
+      position: absolute;
+      top: 0; left: -100%;
+      width: 100%; height: 100%;
+      background: linear-gradient(90deg, transparent, rgba(255,255,255,0.2), transparent);
+      transition: left 0.4s ease;
+    }
+
+    .run-btn:hover:not(:disabled)::before { left: 100%; }
+
+    .run-btn:hover:not(:disabled) {
+      background: #00ffaa;
+      box-shadow: 0 0 40px rgba(0,255,136,0.4);
+      transform: translateY(-1px);
+    }
+
+    .run-btn:disabled {
+      background: #1a1a1a;
+      color: var(--muted);
+      cursor: not-allowed;
+    }
+
+    .agents { display: flex; flex-direction: column; gap: 16px; }
+
+    .agent-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      overflow: hidden;
+      transition: all 0.4s ease;
+    }
+
+    .agent-card.running { border-color: var(--warn); box-shadow: 0 0 20px rgba(255,170,0,0.15); }
+    .agent-card.done { border-color: rgba(0,255,136,0.4); box-shadow: 0 0 20px rgba(0,255,136,0.08); }
+    .agent-card.error { border-color: rgba(255,80,80,0.5); }
+
+    .agent-header {
+      padding: 18px 20px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      cursor: pointer;
+      user-select: none;
+    }
+
+    .agent-left { display: flex; align-items: center; gap: 14px; }
+
+    .agent-icon {
+      width: 40px; height: 40px;
+      border-radius: 8px;
+      background: #1a1a1a;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 20px;
+      border: 1px solid var(--border);
+      flex-shrink: 0;
+    }
+
+    .agent-name {
+      font-family: var(--mono);
+      font-size: 11px;
+      letter-spacing: 2px;
+      text-transform: uppercase;
+      color: #fff;
+      font-weight: 700;
+    }
+
+    .agent-desc { font-family: var(--mono); font-size: 10px; color: var(--muted); margin-top: 3px; }
+
+    .agent-right { display: flex; align-items: center; gap: 12px; }
+
+    .status-badge {
+      font-family: var(--mono);
+      font-size: 10px;
+      letter-spacing: 1px;
+      text-transform: uppercase;
+      padding: 3px 10px;
+      border-radius: 20px;
+      border: 1px solid;
+    }
+
+    .status-badge.idle { color: var(--muted); border-color: var(--border); }
+    .status-badge.running { color: var(--warn); border-color: var(--warn); animation: pulse 1s infinite; }
+    .status-badge.done { color: var(--accent); border-color: rgba(0,255,136,0.4); }
+    .status-badge.error { color: #ff5050; border-color: rgba(255,80,80,0.4); }
+
+    .view-btn {
+      font-family: var(--mono);
+      font-size: 10px;
+      letter-spacing: 1px;
+      padding: 4px 12px;
+      border-radius: 4px;
+      border: 1px solid var(--border);
+      background: transparent;
+      color: var(--muted);
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    .view-btn:hover { border-color: var(--accent); color: var(--accent); }
+
+    .agent-result { display: none; padding: 0 20px 20px; border-top: 1px solid var(--border); }
+    .agent-result.open { display: block; animation: fadeDown 0.3s ease both; }
+
+    .result-text {
+      font-family: var(--mono);
+      font-size: 12px;
+      line-height: 1.8;
+      color: #ccc;
+      white-space: pre-wrap;
+      word-break: break-word;
+      max-height: 400px;
+      overflow-y: auto;
+      padding-top: 16px;
+    }
+
+    .result-text::-webkit-scrollbar { width: 4px; }
+    .result-text::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
+
+    .dots { display: flex; gap: 4px; align-items: center; }
+    .dot { width: 5px; height: 5px; border-radius: 50%; background: var(--warn); animation: bounce 0.8s infinite; }
+    .dot:nth-child(2) { animation-delay: 0.15s; }
+    .dot:nth-child(3) { animation-delay: 0.3s; }
+
+    .error-box {
+      background: rgba(255,80,80,0.07);
+      border: 1px solid rgba(255,80,80,0.3);
+      border-radius: 8px;
+      padding: 12px 16px;
+      font-family: var(--mono);
+      font-size: 12px;
+      color: #ff8080;
+      margin-bottom: 20px;
+      display: none;
+    }
+
+    .error-box.show { display: block; }
+
+    .done-banner {
+      margin-top: 32px;
+      padding: 24px;
+      border-radius: 12px;
+      border: 1px solid rgba(0,255,136,0.3);
+      background: rgba(0,255,136,0.04);
+      text-align: center;
+      display: none;
+      animation: fadeUp 0.4s ease both;
+    }
+
+    .done-banner.show { display: block; }
+
+    .done-banner h3 {
+      font-family: var(--mono);
+      font-size: 13px;
+      letter-spacing: 3px;
+      text-transform: uppercase;
+      color: var(--accent);
+      margin-bottom: 6px;
+    }
+
+    .done-banner p { font-family: var(--mono); font-size: 11px; color: var(--muted); }
+
+    @keyframes fadeUp { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
+    @keyframes fadeDown { from { opacity: 0; transform: translateY(-8px); } to { opacity: 1; transform: translateY(0); } }
+    @keyframes bounce { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-5px); } }
+    @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.5; } }
+  </style>
+</head>
+<body>
+<div class="container">
+
+  <div class="header">
+    <div class="badge">⚡ Agentic AI Pipeline</div>
+    <h1>Auto <span>EDA</span></h1>
+    <p class="subtitle">// upload messy CSV → 3 agents clean, analyse & recommend</p>
+  </div>
+
+  <div class="upload-zone" id="uploadZone">
+    <input type="file" id="fileInput" accept=".csv" style="display:none" />
+    <span class="upload-icon" id="uploadIcon">📂</span>
+    <div class="upload-title" id="uploadTitle">Drop your messy CSV here</div>
+    <div class="upload-sub" id="uploadSub">or click to browse</div>
+  </div>
+
+  <div class="error-box" id="errorBox"></div>
+
+  <button class="run-btn" id="runBtn" disabled onclick="runPipeline()">
+    Run All 3 Agents
+  </button>
+
+  <div class="agents">
+
+    <div class="agent-card" id="card-cleaner">
+      <div class="agent-header" onclick="toggleResult('cleaner')">
+        <div class="agent-left">
+          <div class="agent-icon">🧹</div>
+          <div>
+            <div class="agent-name">Cleaner Agent</div>
+            <div class="agent-desc">Fixes missing values, duplicates & formatting</div>
+          </div>
+        </div>
+        <div class="agent-right">
+          <div class="dots" id="dots-cleaner" style="display:none">
+            <div class="dot"></div><div class="dot"></div><div class="dot"></div>
+          </div>
+          <span class="status-badge idle" id="status-cleaner">Waiting</span>
+          <button class="view-btn" id="viewbtn-cleaner" style="display:none">View ↓</button>
+        </div>
+      </div>
+      <div class="agent-result" id="result-cleaner">
+        <pre class="result-text" id="text-cleaner"></pre>
+      </div>
+    </div>
+
+    <div class="agent-card" id="card-analyst">
+      <div class="agent-header" onclick="toggleResult('analyst')">
+        <div class="agent-left">
+          <div class="agent-icon">🔬</div>
+          <div>
+            <div class="agent-name">Analyst Agent</div>
+            <div class="agent-desc">Detects patterns, anomalies & correlations</div>
+          </div>
+        </div>
+        <div class="agent-right">
+          <div class="dots" id="dots-analyst" style="display:none">
+            <div class="dot"></div><div class="dot"></div><div class="dot"></div>
+          </div>
+          <span class="status-badge idle" id="status-analyst">Waiting</span>
+          <button class="view-btn" id="viewbtn-analyst" style="display:none">View ↓</button>
+        </div>
+      </div>
+      <div class="agent-result" id="result-analyst">
+        <pre class="result-text" id="text-analyst"></pre>
+      </div>
+    </div>
+
+    <div class="agent-card" id="card-kpi">
+      <div class="agent-header" onclick="toggleResult('kpi')">
+        <div class="agent-left">
+          <div class="agent-icon">📊</div>
+          <div>
+            <div class="agent-name">KPI Expert</div>
+            <div class="agent-desc">Power BI & Tableau visualization recommendations</div>
+          </div>
+        </div>
+        <div class="agent-right">
+          <div class="dots" id="dots-kpi" style="display:none">
+            <div class="dot"></div><div class="dot"></div><div class="dot"></div>
+          </div>
+          <span class="status-badge idle" id="status-kpi">Waiting</span>
+          <button class="view-btn" id="viewbtn-kpi" style="display:none">View ↓</button>
+        </div>
+      </div>
+      <div class="agent-result" id="result-kpi">
+        <pre class="result-text" id="text-kpi"></pre>
+      </div>
+    </div>
+
+  </div>
+
+  <div class="done-banner" id="doneBanner">
+    <h3>🎉 Pipeline Complete</h3>
+    <p>Click "View" on each agent card to read the full output</p>
+  </div>
+
+</div>
+
+<script>
+  let csvText = "";
+
+  const zone = document.getElementById("uploadZone");
+  const fileInput = document.getElementById("fileInput");
+
+  zone.addEventListener("click", () => fileInput.click());
+  zone.addEventListener("dragover", e => { e.preventDefault(); zone.classList.add("dragover"); });
+  zone.addEventListener("dragleave", () => zone.classList.remove("dragover"));
+  zone.addEventListener("drop", e => { e.preventDefault(); zone.classList.remove("dragover"); handleFile(e.dataTransfer.files[0]); });
+  fileInput.addEventListener("change", e => handleFile(e.target.files[0]));
+
+  function handleFile(file) {
+    if (!file || !file.name.endsWith(".csv")) { showError("Please upload a .csv file only."); return; }
+    hideError();
+    const reader = new FileReader();
+    reader.onload = e => {
+      csvText = e.target.result;
+      zone.classList.add("has-file");
+      document.getElementById("uploadIcon").textContent = "✅";
+      document.getElementById("uploadTitle").textContent = file.name;
+      document.getElementById("uploadTitle").style.color = "var(--accent)";
+      document.getElementById("uploadSub").textContent = (file.size / 1024).toFixed(1) + " KB · click to change";
+      document.getElementById("runBtn").disabled = false;
+    };
+    reader.readAsText(file);
+  }
+
+  function showError(msg) { const b = document.getElementById("errorBox"); b.textContent = "⚠ " + msg; b.classList.add("show"); }
+  function hideError() { document.getElementById("errorBox").classList.remove("show"); }
+
+  function toggleResult(id) {
+    const el = document.getElementById("result-" + id);
+    const btn = document.getElementById("viewbtn-" + id);
+    if (el.classList.contains("open")) { el.classList.remove("open"); btn.textContent = "View ↓"; }
+    else { el.classList.add("open"); btn.textContent = "Hide ↑"; }
+  }
+
+  function setAgentStatus(id, status) {
+    const card = document.getElementById("card-" + id);
+    const badge = document.getElementById("status-" + id);
+    const dots = document.getElementById("dots-" + id);
+    const viewBtn = document.getElementById("viewbtn-" + id);
+    card.className = "agent-card " + status;
+    badge.className = "status-badge " + status;
+    if (status === "running") { badge.textContent = "Running"; dots.style.display = "flex"; viewBtn.style.display = "none"; }
+    else if (status === "done") { badge.textContent = "Done"; dots.style.display = "none"; viewBtn.style.display = "inline-block"; }
+    else if (status === "error") { badge.textContent = "Error"; dots.style.display = "none"; }
+    else { badge.textContent = "Waiting"; dots.style.display = "none"; }
+  }
+
+  function extractSchema(text) {
+    const lines = text.trim().split("\n");
+    const headers = lines[0].split(",").map(h => h.trim().replace(/"/g, ""));
+    const rows = lines.slice(1).map(line => {
+      const vals = line.split(",").map(v => v.trim().replace(/"/g, ""));
+      const obj = {};
+      headers.forEach((h, i) => obj[h] = vals[i] ?? "");
+      return obj;
+    });
+    const dtypes = {}, missing = {};
+    headers.forEach(h => {
+      const vals = rows.map(r => r[h]).filter(v => v !== "");
+      dtypes[h] = vals.filter(v => !isNaN(Number(v))).length > vals.length * 0.7 ? "float64" : "object";
+      missing[h] = rows.filter(r => !r[h] || r[h] === "").length;
+    });
+    return { columns: headers, dtypes, missing_values: missing, shape: [rows.length, headers.length], sample: rows.slice(0, 3).map(r => JSON.stringify(r)).join("\n") };
+  }
+
+  async function callAgent(systemPrompt, userPrompt) {
+    const res = await fetch("http://localhost:3000/api/agent", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ systemPrompt, userPrompt })
+    });
+    const data = await res.json();
+    if (data.error) throw new Error(data.error);
+    return data.result;
+  }
+
+  async function runPipeline() {
+    if (!csvText) return;
+    hideError();
+    document.getElementById("runBtn").disabled = true;
+    document.getElementById("runBtn").textContent = "Agents Working...";
+    document.getElementById("doneBanner").classList.remove("show");
+
+    const schema = extractSchema(csvText);
+    const schemaStr = JSON.stringify(schema, null, 2);
+
+    try {
+      setAgentStatus("cleaner", "running");
+      const cleanerOut = await callAgent(
+        "You are a data cleaning expert. Be specific, concise and reference exact column names.",
+        `Dataset schema:\n${schemaStr}\n\nAnalyze and provide:\n1. All data quality issues found (missing values by column, duplicates, wrong types, formatting inconsistencies)\n2. Exact cleaning steps to apply for each issue\n3. Expected state of data after cleaning`
+      );
+      document.getElementById("text-cleaner").textContent = cleanerOut;
+      setAgentStatus("cleaner", "done");
+
+      setAgentStatus("analyst", "running");
+      const analystOut = await callAgent(
+        "You are a senior data scientist. Give sharp, specific insights. No generic advice.",
+        `Cleaned dataset schema:\n${schemaStr}\n\nProvide:\n- Key patterns and trends\n- Anomalies or outliers to investigate\n- Notable correlations between columns\n- Top 3 recommendations for modeling or further analysis`
+      );
+      document.getElementById("text-analyst").textContent = analystOut;
+      setAgentStatus("analyst", "done");
+
+      setAgentStatus("kpi", "running");
+      const kpiOut = await callAgent(
+        "You are a senior BI analyst and dashboard expert specializing in Power BI and Tableau.",
+        `Dataset schema:\n${schemaStr}\n\nProvide:\n\n1. TOP KPIs (4-6 specific KPIs from this data, why each matters)\n\n2. BEST VISUALIZATIONS (chart type for each KPI, Power BI vs Tableau recommendation)\n\n3. DASHBOARD LAYOUT (how to structure it, what to show first)\n\n4. TOOL-SPECIFIC TIPS (Power BI: DAX measures, slicers, drill-through / Tableau: LOD expressions, parameters, calculated fields)\n\nBe specific to this exact dataset.`
+      );
+      document.getElementById("text-kpi").textContent = kpiOut;
+      setAgentStatus("kpi", "done");
+
+      document.getElementById("doneBanner").classList.add("show");
+
+    } catch (err) {
+      showError("Server error: " + err.message + " — Make sure server.js is running!");
+      ["cleaner","analyst","kpi"].forEach(id => {
+        if (document.getElementById("status-" + id).textContent === "Running") setAgentStatus(id, "error");
+      });
+    }
+
+    document.getElementById("runBtn").disabled = false;
+    document.getElementById("runBtn").textContent = "Run All 3 Agents";
+  }
+</script>
+</body>
+</html>
