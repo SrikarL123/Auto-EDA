@@ -476,7 +476,7 @@
   }
 
   async function callAgent(systemPrompt, userPrompt) {
-    const res = await fetch("http://localhost:3000/api/agent", {
+    const res = await fetch("/api/agent", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ systemPrompt, userPrompt })
@@ -535,4 +535,5 @@
   }
 </script>
 </body>
+
 </html>
