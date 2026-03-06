@@ -96,6 +96,8 @@ Your Groq API key is stored only in `.env` and never exposed in the frontend cod
 
 ---
 
+⚠️ Note: This app is hosted on Render's free tier. If it hasn't been used for a while, it may take 30-60 seconds to wake up on the first visit. Just wait a moment and try again!
+
 ## 📌 Inspired By
 
 This project was inspired by the article [Agentic AI Pipeline to Automate EDA](https://amanxai.com) by Aman Kharwal, extended with a Node.js backend, secure API handling, a KPI Expert agent, and a full web interface.
