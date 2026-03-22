@@ -502,7 +502,7 @@
         "You are a data cleaning expert. Be specific, concise and reference exact column names.",
         `Dataset schema:\n${schemaStr}\n\nAnalyze and provide:\n1. All data quality issues found (missing values by column, duplicates, wrong types, formatting inconsistencies)\n2. Exact cleaning steps to apply for each issue\n3. Expected state of data after cleaning`
       );
-      document.getElementById("text-cleaner").textContent = cleanerOut;
+      document.getElementById("text-cleaner").innerHTML = formatMarkdown(cleanerOut);
       setAgentStatus("cleaner", "done");
 
       setAgentStatus("analyst", "running");
@@ -510,7 +510,7 @@
         "You are a senior data scientist. Give sharp, specific insights. No generic advice.",
         `Cleaned dataset schema:\n${schemaStr}\n\nProvide:\n- Key patterns and trends\n- Anomalies or outliers to investigate\n- Notable correlations between columns\n- Top 3 recommendations for modeling or further analysis`
       );
-      document.getElementById("text-analyst").textContent = analystOut;
+      document.getElementById("text-analyst").innerHTML = formatMarkdown(analystOut);
       setAgentStatus("analyst", "done");
 
       setAgentStatus("kpi", "running");
@@ -518,7 +518,7 @@
         "You are a senior BI analyst and dashboard expert specializing in Power BI and Tableau.",
         `Dataset schema:\n${schemaStr}\n\nProvide:\n\n1. TOP KPIs (4-6 specific KPIs from this data, why each matters)\n\n2. BEST VISUALIZATIONS (chart type for each KPI, Power BI vs Tableau recommendation)\n\n3. DASHBOARD LAYOUT (how to structure it, what to show first)\n\n4. TOOL-SPECIFIC TIPS (Power BI: DAX measures, slicers, drill-through / Tableau: LOD expressions, parameters, calculated fields)\n\nBe specific to this exact dataset.`
       );
-      document.getElementById("text-kpi").textContent = kpiOut;
+      document.getElementById("text-kpi").innerHTML = formatMarkdown(kpiOut);
       setAgentStatus("kpi", "done");
 
       document.getElementById("doneBanner").classList.add("show");
@@ -533,7 +533,23 @@
     document.getElementById("runBtn").disabled = false;
     document.getElementById("runBtn").textContent = "Run All 3 Agents";
   }
+
+
+
+  function formatMarkdown(text) {
+  return text
+    .replace(/### (.*?)(\n|$)/g, '<h3 style="color:#00ff88;margin:12px 0 6px;font-size:13px;letter-spacing:1px;">$1</h3>')
+    .replace(/## (.*?)(\n|$)/g, '<h2 style="color:#00ff88;margin:14px 0 8px;font-size:15px;">$1</h2>')
+    .replace(/\*\*(.*?)\*\*/g, '<strong style="color:#fff;">$1</strong>')
+    .replace(/`(.*?)`/g, '<code style="background:#1a1a1a;padding:2px 6px;border-radius:4px;color:#00ccff;">$1</code>')
+    .replace(/^\s*[-*] (.*?)(\n|$)/gm, '<li style="margin:4px 0;padding-left:4px;">$1</li>')
+    .replace(/(<li.*<\/li>)/gs, '<ul style="padding-left:16px;margin:8px 0;">$1</ul>')
+    .replace(/\n{2,}/g, '<br><br>')
+    .replace(/\n/g, '<br>');
+}
+
+
+
 </script>
 </body>
-
 </html>
